@@ -210,7 +210,7 @@ int main( int argc, char ** argv )
     memset( g_buffer, 0, sizeof(SAMPLE)*g_bufferSize );
     g_window = new SAMPLE[g_bufferSize];
     
-    blackman(g_window, (unsigned long)g_bufferSize);
+    hanning(g_window, (unsigned long)g_bufferSize);
     
     
     // go for it
