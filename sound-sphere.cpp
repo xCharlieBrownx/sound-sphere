@@ -64,7 +64,7 @@ float g_radius_factor = 1.0f;
 float g_radius = 1.0f;
 float g_radius_base = 1.0f;
 // window
-float * g_window = NULL;
+SAMPLE * g_window = NULL;
 
 
 
@@ -208,7 +208,7 @@ int main( int argc, char ** argv )
     g_bufferSize = bufferFrames;
     g_buffer = new SAMPLE[g_bufferSize];
     memset( g_buffer, 0, sizeof(SAMPLE)*g_bufferSize );
-    g_window = new float[g_bufferSize];
+    g_window = new SAMPLE[g_bufferSize];
     
     blackman(g_window, (unsigned long)g_bufferSize);
     
