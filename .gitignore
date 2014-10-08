@@ -1,0 +1,4 @@
+*.o
+sound-sphere
+VisualSine*
+.DS_Store
