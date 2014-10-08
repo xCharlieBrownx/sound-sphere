@@ -1,0 +1,10 @@
+<key>CFBundleDisplayName</key>
+<string>sound-sphere</string>
+<key>CFBundleExecutable</key>
+<string>MacOS/sound-sphere</string>
+<key>CFBundleIdentifier</key>
+<string>com.mattahorton.sound-sphere</string>
+<key>CFBundleName</key>
+<string>sound-sphere</string>
+<key>CFBundleVersion</key>
+<string>0.1</string>

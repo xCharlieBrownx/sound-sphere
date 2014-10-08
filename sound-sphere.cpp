@@ -7,6 +7,7 @@
 //   uses: RtAudio by Gary Scavone
 //-----------------------------------------------------------------------------
 #include "RtAudio.h"
+#include "chuck_fft.h"
 #include <math.h>
 #include <stdlib.h>
 #include <iostream>
@@ -37,9 +38,9 @@ void keyboardFunc( unsigned char, int, int );
 void mouseFunc( int button, int state, int x, int y );
 
 // our datetype
-#define SAMPLE double
+#define SAMPLE float
 // corresponding format for RtAudio
-#define MY_FORMAT RTAUDIO_FLOAT64
+#define MY_FORMAT RTAUDIO_FLOAT32
 // sample rate
 #define MY_SRATE 44100
 // number of channels
@@ -52,13 +53,18 @@ long g_width = 1024;
 long g_height = 720;
 // global buffer
 SAMPLE * g_buffer = NULL;
+SAMPLE * g_freq_buffer = NULL;
 long g_bufferSize;
 // flags
 bool g_rotate = false;
 bool g_circle = false;
+bool g_window_on = false;
+// radius for circle
 float g_radius_factor = 1.0f;
 float g_radius = 1.0f;
 float g_radius_base = 1.0f;
+// window
+float * g_window = NULL;
 
 
 
@@ -82,6 +88,9 @@ int callme( void * outputBuffer, void * inputBuffer, unsigned int numFrames,
         // zero output
         output[i] = 0;
     }
+    
+    // apply window
+    apply_window(g_buffer, g_window, (unsigned long) g_bufferSize);
     
     return 0;
 }
@@ -116,6 +125,25 @@ void drawSquare() {
     glVertex3f(-1.0f, 1.0f, -1.0f); // The top left corner
     glVertex3f(1.0f, 1.0f, -0.2f); // The top right corner
     glVertex3f(1.0f, -1.0f, -0.2f); // The bottom right corner
+    glEnd();
+}
+
+//-----------------------------------------------------------------------------
+// Name: drawWindow( )
+// Desc: draws a square
+//-----------------------------------------------------------------------------
+void drawWindow() {
+    // step through and plot the waveform
+    GLfloat x = -5;
+    // increment
+    GLfloat xinc = ::fabs(2*x / (g_bufferSize));
+
+    
+    glBegin(GL_LINE_STRIP);
+    for (int i = 0; i < g_bufferSize; i++) {
+        glVertex2f(x, g_window[i]);
+        x += xinc;
+    }
     glEnd();
 }
 
@@ -180,7 +208,11 @@ int main( int argc, char ** argv )
     g_bufferSize = bufferFrames;
     g_buffer = new SAMPLE[g_bufferSize];
     memset( g_buffer, 0, sizeof(SAMPLE)*g_bufferSize );
-
+    g_window = new float[g_bufferSize];
+    
+    blackman(g_window, (unsigned long)g_bufferSize);
+    
+    
     // go for it
     try {
         // start stream
@@ -295,6 +327,10 @@ void keyboardFunc( unsigned char key, int x, int y )
         case 'r':
             g_rotate = !g_rotate;
             break;
+        case 'W':
+        case 'w':
+            g_window_on = !g_window_on;
+            break;
     }
     
     glutPostRedisplay( );
@@ -384,6 +420,8 @@ void displayFunc( )
     // set the color
     // glColor3f( (sin(c)+1)/2, (sin(c*2)+1)/2, (sin(c+.5)+1)/2 );
     glColor3f( 1, 1, 1 );
+    
+    if (g_window_on) drawWindow();
 
     // go
     glBegin( GL_LINE_STRIP );
