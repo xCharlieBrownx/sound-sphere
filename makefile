@@ -15,16 +15,16 @@ LIBS=-framework CoreAudio -framework CoreMIDI -framework CoreFoundation \
 	-framework AppKit -lstdc++ -lm
 endif
 
-OBJS=   RtAudio.o VisualSine.o
+OBJS=   RtAudio.o sound-sphere.o
 
-VisualSine: $(OBJS)
-	$(CXX) -o VisualSine $(OBJS) $(LIBS)
+sound-sphere: $(OBJS)
+	$(CXX) -o sound-sphere $(OBJS) $(LIBS)
 
-VisualSine.o: VisualSine.cpp RtAudio.h
-	$(CXX) $(FLAGS) VisualSine.cpp
+sound-sphere.o: sound-sphere.cpp RtAudio.h
+	$(CXX) $(FLAGS) sound-sphere.cpp
 
 RtAudio.o: RtAudio.h RtAudio.cpp RtError.h
 	$(CXX) $(FLAGS) RtAudio.cpp
 
 clean:
-	rm -f *~ *# *.o VisualSine
+	rm -f *~ *# *.o sound-sphere
