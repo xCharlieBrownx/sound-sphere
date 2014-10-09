@@ -54,6 +54,7 @@ long g_height = 720;
 // global buffer
 SAMPLE * g_buffer = NULL;
 SAMPLE * g_freq_buffer = NULL;
+complex * g_cbuff = NULL;
 long g_bufferSize;
 // flags
 bool g_rotate = false;
@@ -89,9 +90,6 @@ int callme( void * outputBuffer, void * inputBuffer, unsigned int numFrames,
         output[i] = 0;
     }
     
-    // apply window
-    apply_window(g_buffer, g_window, (unsigned long) g_bufferSize);
-    
     return 0;
 }
 
@@ -103,13 +101,13 @@ void drawCircle() {
     float radius, angle, x, y;
     glBegin(GL_LINE_LOOP);
     
-    for(int i =0; i <= 300; i++){
-        angle = 2 * M_PI * i / 300;
+    for(int i =0; i <= (g_bufferSize/2); i++){
+        angle = 2 * M_PI * i / (g_bufferSize/2);
         radius = g_radius_factor * g_radius + g_radius_base;
         //radius = 1.0f;
-        x = (5*g_buffer[i]+radius)*cos(angle);
-        y = (5*g_buffer[i]+radius)*sin(angle);
-
+        x = (10*pow(cmp_abs(g_cbuff[i]), .5)+radius)*cos(angle);
+        y = (10*pow(cmp_abs(g_cbuff[i]), .5)+radius)*sin(angle);
+        //cerr << cmp_abs(g_cbuff[i]) << endl;
         glVertex2f(x,y);
     }
     glEnd();
@@ -207,6 +205,7 @@ int main( int argc, char ** argv )
     // allocate global buffer
     g_bufferSize = bufferFrames;
     g_buffer = new SAMPLE[g_bufferSize];
+    g_freq_buffer = new SAMPLE[g_bufferSize];
     memset( g_buffer, 0, sizeof(SAMPLE)*g_bufferSize );
     g_window = new SAMPLE[g_bufferSize];
     
@@ -409,6 +408,20 @@ void displayFunc( )
     // push the matrix
     glPushMatrix();
     
+    // apply window
+    apply_window(g_buffer, g_window, (unsigned long) g_bufferSize);
+    
+    // copy g_buffer to g_freq_buffer
+    //memcpy( g_freq_buffer, g_buffer, sizeof(SAMPLE)*g_bufferSize);
+    for( int j = 0; j < g_bufferSize; j++ ) {
+        g_freq_buffer[j] = g_buffer[j];
+    }
+    
+    // fft
+    rfft(g_freq_buffer, g_bufferSize/2, FFT_FORWARD);
+    
+    g_cbuff = (complex *) g_freq_buffer;
+    
     // rotation
     if (g_rotate) {
         glRotatef( zrot, 0, 0, 1 );
@@ -438,6 +451,7 @@ void displayFunc( )
     
     // rotation
     if (g_rotate) {
+        glRotatef( 0, 0, 0, 0 );
         glRotatef( xrot, 1, 0, 0 );
         xrot += .5;
     } else {
