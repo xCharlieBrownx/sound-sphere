@@ -51,21 +51,30 @@ void mouseFunc( int button, int state, int x, int y );
 // width and height
 long g_width = 1024;
 long g_height = 720;
+// history length
+int g_histSize = 256;
 // global buffer
 SAMPLE * g_buffer = NULL;
 SAMPLE * g_freq_buffer = NULL;
 complex * g_cbuff = NULL;
+complex ** g_cbuff_buff = new complex *[g_histSize];
 long g_bufferSize;
 // flags
 bool g_rotate = false;
 bool g_circle = false;
+bool g_sphere = false;
 bool g_window_on = false;
+bool g_waterfall = false;
+bool g_new_block = false;
 // radius for circle
 float g_radius_factor = 1.0f;
 float g_radius = 1.0f;
 float g_radius_base = 1.0f;
 // window
 SAMPLE * g_window = NULL;
+// history counter
+int g_histCount = 0;
+int g_maxCount = 0;
 
 
 
@@ -90,6 +99,38 @@ int callme( void * outputBuffer, void * inputBuffer, unsigned int numFrames,
         output[i] = 0;
     }
     
+    // apply window
+    apply_window(g_buffer, g_window, (unsigned long) g_bufferSize);
+    
+    // copy g_buffer to g_freq_buffer
+    memcpy( g_freq_buffer, g_buffer, sizeof(SAMPLE)*g_bufferSize);
+//    for( int j = 0; j < g_bufferSize; j++ ) {
+//        g_freq_buffer[j] = g_buffer[j];
+//    }
+    
+    // fft
+    rfft(g_freq_buffer, g_bufferSize/2, FFT_FORWARD);
+    
+    // Get the complex buffer for this round set up
+    g_cbuff = (complex *) g_freq_buffer;
+    
+    // Store this complex buffer in the history buffer
+    // Indices are modulo g_histSize. This creates a rolling
+    // store of size g_histSize
+    //cerr << sizeof(*g_cbuff_buff[g_histCount]) << endl;
+    //memcpy(g_cbuff_buff[g_histCount], g_cbuff, sizeof(complex)*(g_bufferSize/2));
+    for (int j = 0; j < g_bufferSize/2; j++) {
+        g_cbuff_buff[g_histCount] = new complex [g_bufferSize/2];
+        g_cbuff_buff[g_histCount][j] = g_cbuff[j];
+        cerr << cmp_abs(g_cbuff_buff[g_histCount][j]) << endl;
+    }
+    
+    g_histCount = (g_histCount + 1) % g_histSize;
+    if ( g_histCount > g_maxCount ) g_maxCount = g_histCount;
+    
+    g_new_block = true;
+    
+    
     return 0;
 }
 
@@ -97,19 +138,22 @@ int callme( void * outputBuffer, void * inputBuffer, unsigned int numFrames,
 // Name: drawCircle( )
 // Desc: draws a circle
 //-----------------------------------------------------------------------------
-void drawCircle() {
-    float radius, angle, x, y;
+void drawCircle(complex * cbuff) {
+    //cerr << "drawCircle!" << endl;
+    float radius, angle, x, y, xrot = 0.0f, zrot = 0.0f;
+    
     glBegin(GL_LINE_LOOP);
     
     for(int i =0; i <= (g_bufferSize/2); i++){
         angle = 2 * M_PI * i / (g_bufferSize/2);
         radius = g_radius_factor * g_radius + g_radius_base;
         //radius = 1.0f;
-        x = (10*pow(cmp_abs(g_cbuff[i]), .5)+radius)*cos(angle);
-        y = (10*pow(cmp_abs(g_cbuff[i]), .5)+radius)*sin(angle);
+        x = (10*pow(cmp_abs(cbuff[i]), .5)+radius)*cos(angle);
+        y = (10*pow(cmp_abs(cbuff[i]), .5)+radius)*sin(angle);
         //cerr << cmp_abs(g_cbuff[i]) << endl;
         glVertex2f(x,y);
     }
+
     glEnd();
 }
 
@@ -211,7 +255,6 @@ int main( int argc, char ** argv )
     
     hanning(g_window, (unsigned long)g_bufferSize);
     
-    
     // go for it
     try {
         // start stream
@@ -234,6 +277,8 @@ cleanup:
     // close if open
     if( audio.isStreamOpen() )
         audio.closeStream();
+    
+    delete g_buffer, g_cbuff, g_window, g_freq_buffer, g_cbuff_buff;
     
     // done
     return 0;
@@ -321,6 +366,12 @@ void keyboardFunc( unsigned char key, int x, int y )
         case 'C':
         case 'c':
             g_circle = !g_circle;
+            g_sphere = false;
+            break;
+        case 'S':
+        case 's':
+            g_sphere = !g_sphere;
+            if (!g_circle) g_circle = !g_circle;
             break;
         case 'R':
         case 'r':
@@ -329,6 +380,10 @@ void keyboardFunc( unsigned char key, int x, int y )
         case 'W':
         case 'w':
             g_window_on = !g_window_on;
+            break;
+        case 'F':
+        case 'f':
+            g_waterfall = !g_waterfall;
             break;
     }
     
@@ -408,20 +463,6 @@ void displayFunc( )
     // push the matrix
     glPushMatrix();
     
-    // apply window
-    apply_window(g_buffer, g_window, (unsigned long) g_bufferSize);
-    
-    // copy g_buffer to g_freq_buffer
-    //memcpy( g_freq_buffer, g_buffer, sizeof(SAMPLE)*g_bufferSize);
-    for( int j = 0; j < g_bufferSize; j++ ) {
-        g_freq_buffer[j] = g_buffer[j];
-    }
-    
-    // fft
-    rfft(g_freq_buffer, g_bufferSize/2, FFT_FORWARD);
-    
-    g_cbuff = (complex *) g_freq_buffer;
-    
     // rotation
     if (g_rotate) {
         glRotatef( zrot, 0, 0, 1 );
@@ -449,23 +490,48 @@ void displayFunc( )
     // done
     glEnd();
     
-    // rotation
-    if (g_rotate) {
-        glRotatef( 0, 0, 0, 0 );
-        glRotatef( xrot, 1, 0, 0 );
-        xrot += .5;
-    } else {
-        xrot = 0.0f;
-    }
-    
     glColor3f( (sin(c)+1)/2, (sin(c*2)+1)/2, (sin(c+.5)+1)/2 );
     
     // Set up breathing circle
     breathe_angle = 2 * M_PI * breathe / 300;
     g_radius = .5*sin(breathe_angle)+1;
     
-    //drawSquare();
-    if (g_circle) drawCircle();
+    
+    // rotation
+    if (g_rotate) {
+        glRotatef( xrot, -1, 0, 0 );
+        xrot += .0246;
+    } else {
+        xrot = 0.0f;
+    }
+    complex * cmp = NULL;
+    
+    
+    if (g_sphere && g_circle && g_new_block) {
+        if (g_waterfall) {
+            for (int spectrum = 0; spectrum < g_maxCount; spectrum++){
+                glRotatef( xrot, -1, 0, 0 );
+                xrot += 1.0;
+                if (cmp != NULL) {
+                    //cerr << memcmp( g_cbuff_buff[spectrum], cmp, g_bufferSize/2) << endl;
+                }
+                cmp = g_cbuff_buff[spectrum];
+                if (g_circle) drawCircle(g_cbuff_buff[spectrum]);
+                
+            }
+        } else {
+            for (int i = 0; i < 128; i++) {
+                glRotatef( xrot, -1, 0, 0 );
+                xrot += 0.049; // 2*pi/128
+                drawCircle(g_cbuff);
+            }
+        }
+    } else if (g_circle && g_new_block) {
+        drawCircle(g_cbuff);
+    }
+    
+    // pop
+    glPopMatrix();
     
     // increment color
     c += .01;
@@ -473,8 +539,7 @@ void displayFunc( )
     // increment breathing counter
     breathe += .5;
     
-    // pop
-    glPopMatrix();
+    
     
     // flush!
     glFlush( );
