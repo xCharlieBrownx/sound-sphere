@@ -52,12 +52,12 @@ void mouseFunc( int button, int state, int x, int y );
 long g_width = 1024;
 long g_height = 720;
 // history length
-int g_histSize = 256;
+int g_histSize = 255;
 // global buffer
 SAMPLE * g_buffer = NULL;
 SAMPLE * g_freq_buffer = NULL;
 complex * g_cbuff = NULL;
-complex ** g_cbuff_buff = new complex *[g_histSize];
+complex ** g_cbuff_buff = NULL;
 long g_bufferSize;
 // flags
 bool g_rotate = false;
@@ -65,7 +65,6 @@ bool g_circle = false;
 bool g_sphere = false;
 bool g_window_on = false;
 bool g_waterfall = false;
-bool g_new_block = false;
 // radius for circle
 float g_radius_factor = 1.0f;
 float g_radius = 1.0f;
@@ -104,9 +103,6 @@ int callme( void * outputBuffer, void * inputBuffer, unsigned int numFrames,
     
     // copy g_buffer to g_freq_buffer
     memcpy( g_freq_buffer, g_buffer, sizeof(SAMPLE)*g_bufferSize);
-//    for( int j = 0; j < g_bufferSize; j++ ) {
-//        g_freq_buffer[j] = g_buffer[j];
-//    }
     
     // fft
     rfft(g_freq_buffer, g_bufferSize/2, FFT_FORWARD);
@@ -117,19 +113,12 @@ int callme( void * outputBuffer, void * inputBuffer, unsigned int numFrames,
     // Store this complex buffer in the history buffer
     // Indices are modulo g_histSize. This creates a rolling
     // store of size g_histSize
-    //cerr << sizeof(*g_cbuff_buff[g_histCount]) << endl;
-    //memcpy(g_cbuff_buff[g_histCount], g_cbuff, sizeof(complex)*(g_bufferSize/2));
     for (int j = 0; j < g_bufferSize/2; j++) {
-        g_cbuff_buff[g_histCount] = new complex [g_bufferSize/2];
         g_cbuff_buff[g_histCount][j] = g_cbuff[j];
-        cerr << cmp_abs(g_cbuff_buff[g_histCount][j]) << endl;
     }
     
     g_histCount = (g_histCount + 1) % g_histSize;
     if ( g_histCount > g_maxCount ) g_maxCount = g_histCount;
-    
-    g_new_block = true;
-    
     
     return 0;
 }
@@ -147,10 +136,9 @@ void drawCircle(complex * cbuff) {
     for(int i =0; i <= (g_bufferSize/2); i++){
         angle = 2 * M_PI * i / (g_bufferSize/2);
         radius = g_radius_factor * g_radius + g_radius_base;
-        //radius = 1.0f;
+
         x = (10*pow(cmp_abs(cbuff[i]), .5)+radius)*cos(angle);
         y = (10*pow(cmp_abs(cbuff[i]), .5)+radius)*sin(angle);
-        //cerr << cmp_abs(g_cbuff[i]) << endl;
         glVertex2f(x,y);
     }
 
@@ -252,6 +240,12 @@ int main( int argc, char ** argv )
     g_freq_buffer = new SAMPLE[g_bufferSize];
     memset( g_buffer, 0, sizeof(SAMPLE)*g_bufferSize );
     g_window = new SAMPLE[g_bufferSize];
+    g_cbuff_buff = new complex *[g_histSize];
+    for (int i = 0; i < g_histSize; i++){
+        g_cbuff_buff[i] = new complex [g_bufferSize/2];
+    }
+    
+
     
     hanning(g_window, (unsigned long)g_bufferSize);
     
@@ -448,7 +442,7 @@ void idleFunc( )
 void displayFunc( )
 {
     // local state
-    static GLfloat zrot = 0.0f, c = 0.0f, xrot = 0.0f, breathe = 0.0f, breathe_angle = 0.0f;
+    static GLfloat zrot = 0.0f, c = 0.0f, xrot = 0.0f, breathe = 0.0f, breathe_angle = 0.0f, circ_rot = 0.0f;
     
     // clear the color and depth buffers
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
@@ -493,7 +487,7 @@ void displayFunc( )
     glColor3f( (sin(c)+1)/2, (sin(c*2)+1)/2, (sin(c+.5)+1)/2 );
     
     // Set up breathing circle
-    breathe_angle = 2 * M_PI * breathe / 300;
+    breathe_angle = 2 * M_PI * breathe / (g_bufferSize/2);
     g_radius = .5*sin(breathe_angle)+1;
     
     
@@ -501,32 +495,38 @@ void displayFunc( )
     if (g_rotate) {
         glRotatef( xrot, -1, 0, 0 );
         xrot += .0246;
+        circ_rot += .5;
     } else {
         xrot = 0.0f;
+        circ_rot = 0.0f;
     }
     complex * cmp = NULL;
     
     
-    if (g_sphere && g_circle && g_new_block) {
+    if (g_sphere && g_circle) {
         if (g_waterfall) {
             for (int spectrum = 0; spectrum < g_maxCount; spectrum++){
-                glRotatef( xrot, -1, 0, 0 );
-                xrot += 1.0;
-                if (cmp != NULL) {
-                    //cerr << memcmp( g_cbuff_buff[spectrum], cmp, g_bufferSize/2) << endl;
-                }
+                
+                glRotatef( circ_rot, -1, 0, 0 );
+//                if (circ_rot >= 0) {
+//                    circ_rot = 0.0f;
+//                } else {
+                    circ_rot += 0.0123;
+//                }
+                
                 cmp = g_cbuff_buff[spectrum];
-                if (g_circle) drawCircle(g_cbuff_buff[spectrum]);
+                drawCircle(g_cbuff_buff[spectrum]);
                 
             }
         } else {
             for (int i = 0; i < 128; i++) {
-                glRotatef( xrot, -1, 0, 0 );
-                xrot += 0.049; // 2*pi/128
+                glRotatef( circ_rot, -1, 0, 0 );
+                circ_rot += 0.049; // 2*pi/128
                 drawCircle(g_cbuff);
             }
         }
-    } else if (g_circle && g_new_block) {
+    } else if (g_circle) {
+        glRotatef( circ_rot, -1, 0, 0 );
         drawCircle(g_cbuff);
     }
     
@@ -538,8 +538,6 @@ void displayFunc( )
     
     // increment breathing counter
     breathe += .5;
-    
-    
     
     // flush!
     glFlush( );
