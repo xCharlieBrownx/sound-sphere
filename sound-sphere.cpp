@@ -35,7 +35,9 @@ void idleFunc();
 void displayFunc();
 void reshapeFunc( GLsizei width, GLsizei height );
 void keyboardFunc( unsigned char, int, int );
+void specialFunc( int, int, int );
 void mouseFunc( int button, int state, int x, int y );
+
 
 // our datetype
 #define SAMPLE float
@@ -74,6 +76,8 @@ SAMPLE * g_window = NULL;
 // history counter
 int g_histCount = 0;
 int g_maxCount = 0;
+// max val
+float g_maxVal = 0.0f;
 
 
 
@@ -115,6 +119,7 @@ int callme( void * outputBuffer, void * inputBuffer, unsigned int numFrames,
     // store of size g_histSize
     for (int j = 0; j < g_bufferSize/2; j++) {
         g_cbuff_buff[g_histCount][j] = g_cbuff[j];
+        if (g_cbuff[j] > g_maxVal) g_maxVal = g_cbuff[j];
     }
     
     g_histCount = (g_histCount + 1) % g_histSize;
@@ -128,7 +133,6 @@ int callme( void * outputBuffer, void * inputBuffer, unsigned int numFrames,
 // Desc: draws a circle
 //-----------------------------------------------------------------------------
 void drawCircle(complex * cbuff) {
-    //cerr << "drawCircle!" << endl;
     float radius, angle, x, y, xrot = 0.0f, zrot = 0.0f;
     
     glBegin(GL_LINE_LOOP);
@@ -304,6 +308,8 @@ void initGfx()
     glutReshapeFunc( reshapeFunc );
     // set the keyboard function - called on keyboard events
     glutKeyboardFunc( keyboardFunc );
+    // set the special keyboard function - called on special keyboard events
+    glutSpecialFunc( specialFunc );
     // set the mouse function - called on mouse stuff
     glutMouseFunc( mouseFunc );
     
@@ -384,6 +390,21 @@ void keyboardFunc( unsigned char key, int x, int y )
     glutPostRedisplay( );
 }
 
+//-----------------------------------------------------------------------------
+// Name: specialFunc( )
+// Desc: special key event
+//-----------------------------------------------------------------------------
+void specialFunc(int key, int x, int y) {
+    if (key == GLUT_KEY_UP) {
+        if (g_radius_base < 2.5f) {
+            g_radius_base += .05f;
+        }
+    } else if (key == GLUT_KEY_DOWN) {
+        if (g_radius_base > 0.0f) {
+            g_radius_base -= .05f;
+        }
+    }
+}
 
 
 
@@ -500,33 +521,28 @@ void displayFunc( )
         xrot = 0.0f;
         circ_rot = 0.0f;
     }
-    complex * cmp = NULL;
-    
     
     if (g_sphere && g_circle) {
         if (g_waterfall) {
             for (int spectrum = 0; spectrum < g_maxCount; spectrum++){
                 
-                glRotatef( circ_rot, -1, 0, 0 );
-//                if (circ_rot >= 0) {
-//                    circ_rot = 0.0f;
-//                } else {
-                    circ_rot += 0.0123;
-//                }
-                
-                cmp = g_cbuff_buff[spectrum];
+                glRotatef( circ_rot, 1, 0, 0 );
+                circ_rot += 0.0123;
                 drawCircle(g_cbuff_buff[spectrum]);
-                
             }
         } else {
             for (int i = 0; i < 128; i++) {
-                glRotatef( circ_rot, -1, 0, 0 );
+                glRotatef( circ_rot, 1, 0, 0 );
                 circ_rot += 0.049; // 2*pi/128
                 drawCircle(g_cbuff);
             }
+            for (int i = 0; i < (g_bufferSize/2); i++) {
+                g_cbuff[i].re = 0.0f;
+                g_cbuff[i].im = 0.0f;
+            }
         }
     } else if (g_circle) {
-        glRotatef( circ_rot, -1, 0, 0 );
+        glRotatef( circ_rot, 1, 0, 0 );
         drawCircle(g_cbuff);
     }
     
