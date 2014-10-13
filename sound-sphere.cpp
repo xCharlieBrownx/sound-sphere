@@ -60,7 +60,7 @@ long g_height = 720;
 int g_histSize = 255;
 // refresh rate settings
 long time_pre = 0;
-int refresh_rate = 20000; //us
+int refresh_rate = 15000; //us
 struct timeval timer;
 // global buffer
 SAMPLE * g_buffer = NULL;
