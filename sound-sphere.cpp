@@ -8,10 +8,13 @@
 //-----------------------------------------------------------------------------
 #include "RtAudio.h"
 #include "chuck_fft.h"
+#include "color.h"
 #include <math.h>
 #include <stdlib.h>
 #include <iostream>
 #include <cstring>
+#include <sys/time.h>
+#include <time.h>
 using namespace std;
 
 #ifdef __MACOSX_CORE__
@@ -55,6 +58,10 @@ long g_width = 1024;
 long g_height = 720;
 // history length
 int g_histSize = 255;
+// refresh rate settings
+long time_pre = 0;
+int refresh_rate = 20000; //us
+struct timeval timer;
 // global buffer
 SAMPLE * g_buffer = NULL;
 SAMPLE * g_freq_buffer = NULL;
@@ -67,6 +74,7 @@ bool g_circle = false;
 bool g_sphere = false;
 bool g_window_on = false;
 bool g_waterfall = false;
+bool g_party = false;
 // radius for circle
 float g_radius_factor = 1.0f;
 float g_radius = 1.0f;
@@ -114,12 +122,16 @@ int callme( void * outputBuffer, void * inputBuffer, unsigned int numFrames,
     // Get the complex buffer for this round set up
     g_cbuff = (complex *) g_freq_buffer;
     
+    g_maxVal = 0.0f; //reset maxVal
+    
     // Store this complex buffer in the history buffer
     // Indices are modulo g_histSize. This creates a rolling
     // store of size g_histSize
     for (int j = 0; j < g_bufferSize/2; j++) {
         g_cbuff_buff[g_histCount][j] = g_cbuff[j];
-        if (g_cbuff[j] > g_maxVal) g_maxVal = g_cbuff[j];
+        
+        // get new maxVal
+        if (cmp_abs(g_cbuff[j]) > g_maxVal) g_maxVal = cmp_abs(g_cbuff[j]);
     }
     
     g_histCount = (g_histCount + 1) % g_histSize;
@@ -385,6 +397,10 @@ void keyboardFunc( unsigned char key, int x, int y )
         case 'f':
             g_waterfall = !g_waterfall;
             break;
+        case 'P':
+        case 'p':
+            g_party = !g_party;
+            break;
     }
     
     glutPostRedisplay( );
@@ -465,6 +481,22 @@ void displayFunc( )
     // local state
     static GLfloat zrot = 0.0f, c = 0.0f, xrot = 0.0f, breathe = 0.0f, breathe_angle = 0.0f, circ_rot = 0.0f;
     
+    // enforce refresh rate
+    long time_diff = 0;
+    if (time_pre > 0){
+        gettimeofday(&timer, NULL);
+        long time_post = (long)(timer.tv_sec*1000000+timer.tv_usec);
+        time_diff =  time_post - time_pre;
+        
+        if(time_diff < refresh_rate)usleep(refresh_rate - time_diff);
+        
+        gettimeofday(&timer, NULL);
+        time_post = (long)(timer.tv_sec*1000000+timer.tv_usec);
+        time_diff =  time_post - time_pre;
+    }
+    gettimeofday(&timer, NULL);
+    time_pre = (long)(timer.tv_sec*1000000+timer.tv_usec);
+    
     // clear the color and depth buffers
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
     
@@ -505,7 +537,13 @@ void displayFunc( )
     // done
     glEnd();
     
-    glColor3f( (sin(c)+1)/2, (sin(c*2)+1)/2, (sin(c+.5)+1)/2 );
+    
+    if (g_party) {
+        Color color = colorSpectrum((double)(g_maxVal*100.0));
+        glColor3f(color.R, color.G, color.B);
+    } else {
+        glColor3f( (sin(c)+1)/2, (sin(c*2)+1)/2, (sin(c+.5)+1)/2 );
+    }
     
     // Set up breathing circle
     breathe_angle = 2 * M_PI * breathe / (g_bufferSize/2);

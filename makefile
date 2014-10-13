@@ -15,7 +15,7 @@ LIBS=-framework CoreAudio -framework CoreMIDI -framework CoreFoundation \
 	-framework AppKit -lstdc++ -lm
 endif
 
-OBJS=   RtAudio.o sound-sphere.o chuck_fft.o
+OBJS=   RtAudio.o sound-sphere.o chuck_fft.o color.o
 
 sound-sphere: $(OBJS)
 	$(CXX) -o sound-sphere $(OBJS) $(LIBS)
@@ -28,6 +28,9 @@ RtAudio.o: RtAudio.h RtAudio.cpp RtError.h
 
 chuck_fft.o: chuck_fft.c
 	$(CXX) $(FLAGS) chuck_fft.c
+
+color.o: color.h color.c
+	$(CXX) $(FLAGS) color.c
 
 clean:
 	rm -f *~ *# *.o sound-sphere
