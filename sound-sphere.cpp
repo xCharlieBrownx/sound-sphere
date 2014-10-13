@@ -304,10 +304,22 @@ int main( int argc, char ** argv )
     g_buffer = new SAMPLE[g_bufferSize];
     g_freq_buffer = new SAMPLE[g_bufferSize];
     memset( g_buffer, 0, sizeof(SAMPLE)*g_bufferSize );
+    memset(g_freq_buffer, 0, sizeof(SAMPLE)*g_bufferSize);
     g_window = new SAMPLE[g_bufferSize];
+    
+    g_cbuff = new complex [g_bufferSize/2];
+    for (int i = 0; i < (g_bufferSize/2); i++) {
+        g_cbuff[i].re = 0.0f;
+        g_cbuff[i].im = 0.0f;
+    }
+    
     g_cbuff_buff = new complex *[g_histSize];
     for (int i = 0; i < g_histSize; i++){
         g_cbuff_buff[i] = new complex [g_bufferSize/2];
+        for (int j= 0; j < (g_bufferSize/2); j++) {
+            g_cbuff_buff[i][j].re = 0;
+            g_cbuff_buff[i][j].re = 0;
+        }
     }
     
 
