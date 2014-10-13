@@ -40,6 +40,7 @@ void reshapeFunc( GLsizei width, GLsizei height );
 void keyboardFunc( unsigned char, int, int );
 void specialFunc( int, int, int );
 void mouseFunc( int button, int state, int x, int y );
+void help();
 
 
 // our datetype
@@ -56,6 +57,8 @@ void mouseFunc( int button, int state, int x, int y );
 // width and height
 long g_width = 1024;
 long g_height = 720;
+long g_last_width = g_width;
+long g_last_height = g_height;
 // history length
 int g_histSize = 255;
 // refresh rate settings
@@ -75,6 +78,7 @@ bool g_sphere = false;
 bool g_window_on = false;
 bool g_waterfall = false;
 bool g_party = false;
+GLboolean g_fullscreen = FALSE;
 // radius for circle
 float g_radius_factor = 1.0f;
 float g_radius = 1.0f;
@@ -86,6 +90,8 @@ int g_histCount = 0;
 int g_maxCount = 0;
 // max val
 float g_maxVal = 0.0f;
+// left/right rotation
+float yrot = 3.0f;
 
 
 
@@ -149,12 +155,23 @@ void drawCircle(complex * cbuff) {
     
     glBegin(GL_LINE_LOOP);
     
-    for(int i =0; i <= (g_bufferSize/2); i++){
+    for(int i =0; i < (g_bufferSize/2); i++){
         angle = 2 * M_PI * i / (g_bufferSize/2);
         radius = g_radius_factor * g_radius + g_radius_base;
-
-        x = (10*pow(cmp_abs(cbuff[i]), .5)+radius)*cos(angle);
-        y = (10*pow(cmp_abs(cbuff[i]), .5)+radius)*sin(angle);
+        //cerr << (10*pow(cmp_abs(cbuff[i]), .5)) << endl;
+        //cerr << i << endl;
+        if (cmp_abs(cbuff[i]) <= 1) {
+            x = (10*pow(cmp_abs(cbuff[i]), .5)+radius)*cos(angle);
+            y = (10*pow(cmp_abs(cbuff[i]), .5)+radius)*sin(angle);
+        } else {
+            //cerr << "bad data" << endl;
+            x = radius*cos(angle);
+            y = radius*sin(angle);
+        }
+        
+        if (cmp_abs(cbuff[i]) > 1) {
+            //cerr << "worse data" << endl;
+        }
         glVertex2f(x,y);
     }
 
@@ -191,6 +208,38 @@ void drawWindow() {
         x += xinc;
     }
     glEnd();
+}
+
+//-----------------------------------------------------------------------------
+// Name: help( )
+// Desc: print usage
+//-----------------------------------------------------------------------------
+void help()
+{
+    cerr << "----------------------------------------------------" << endl;
+    cerr << "sound-sphere (v1.0)" << endl;
+    cerr << "Matt Horton" << endl;
+    cerr << "http://website/" << endl;
+    cerr << "----------------------------------------------------" << endl;
+    cerr << " All modifier keys can be used in their capital form" << endl;
+    cerr << endl;
+    cerr << "'h' - print this help message" << endl;
+    cerr << "'m' - toggle fullscreen" << endl;
+    cerr << "'q' - quit visualization" << endl;
+    cerr << "'c' - show/hide circular signal spectrum (will hide sphere if shown)" << endl;
+    cerr << "'s' - show/hide spherical signal spectrum" << endl;
+    cerr << "'f' - toggle drawing of historical spectra" << endl;
+    cerr << "'w' - show/hide time-domain window visualization" << endl;
+    cerr << "'p' - toggle party mode" << endl;
+    cerr << "'r' - toggle rotation" << endl;
+    cerr << endl;
+    cerr << "radius controls:" << endl;
+    cerr << "Press or hold the up and down keys to increase or " << endl;
+    cerr << "decrease (respectively) the radius of the sphere or circle." << endl;
+    cerr << endl;
+    cerr << "rotation controls:" << endl;
+    cerr << "Press or hold the left and right keys to rotate about the y axis." << endl;
+    cerr << "----------------------------------------------------" << endl;
 }
 
 
@@ -265,6 +314,9 @@ int main( int argc, char ** argv )
     
     hanning(g_window, (unsigned long)g_bufferSize);
     
+    // print help
+    help();
+    
     // go for it
     try {
         // start stream
@@ -310,7 +362,7 @@ void initGfx()
     // set the window postion
     glutInitWindowPosition( 100, 100 );
     // create the window
-    glutCreateWindow( "VisualSine" );
+    glutCreateWindow( "sound-sphere" );
     
     // set the idle function - called when idle
     glutIdleFunc( idleFunc );
@@ -388,6 +440,7 @@ void keyboardFunc( unsigned char key, int x, int y )
         case 'R':
         case 'r':
             g_rotate = !g_rotate;
+            glRotatef(0, 0, 1, 0);
             break;
         case 'W':
         case 'w':
@@ -401,6 +454,26 @@ void keyboardFunc( unsigned char key, int x, int y )
         case 'p':
             g_party = !g_party;
             break;
+        case 'H':
+        case 'h':
+            help();
+            break;
+        case 'M':
+        case 'm': // toggle fullscreen
+        {
+            // check fullscreen
+            if( !g_fullscreen )
+            {
+                g_last_width = g_width;
+                g_last_height = g_height;
+                glutFullScreen();
+            }
+            else
+                glutReshapeWindow( g_last_width, g_last_height );
+            
+            // toggle variable value
+            g_fullscreen = !g_fullscreen;
+        }
     }
     
     glutPostRedisplay( );
@@ -419,6 +492,12 @@ void specialFunc(int key, int x, int y) {
         if (g_radius_base > 0.0f) {
             g_radius_base -= .05f;
         }
+    } else if (key == GLUT_KEY_RIGHT) {
+        //yrot += .1;
+        glRotatef( yrot, 0, 1, 0 );
+    } else if (key == GLUT_KEY_LEFT) {
+        //yrot -= .1;
+        glRotatef( yrot, 0, -1, 0);
     }
 }
 
