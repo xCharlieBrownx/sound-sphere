@@ -134,6 +134,8 @@ int callme( void * outputBuffer, void * inputBuffer, unsigned int numFrames,
     // Indices are modulo g_histSize. This creates a rolling
     // store of size g_histSize
     for (int j = 0; j < g_bufferSize/2; j++) {
+        g_cbuff_buff[g_histCount][j].re = 0;
+        g_cbuff_buff[g_histCount][j].im = 0;
         g_cbuff_buff[g_histCount][j] = g_cbuff[j];
         
         // get new maxVal
