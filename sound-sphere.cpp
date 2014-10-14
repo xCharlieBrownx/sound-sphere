@@ -224,7 +224,7 @@ void help()
     cerr << "----------------------------------------------------" << endl;
     cerr << "sound-sphere (v1.0)" << endl;
     cerr << "Matt Horton" << endl;
-    cerr << "http://website/" << endl;
+    cerr << "http://ccrma.stanford.edu/~mattah/256a/sound-sphere/" << endl;
     cerr << "----------------------------------------------------" << endl;
     cerr << " All modifier keys can be used in their capital form" << endl;
     cerr << endl;
