@@ -1,8 +1,7 @@
-sound-sphere (v1.0)
-Matt Horton
-http://ccrma.stanford.edu/~mattah/256a/sound-sphere/
+#sound-sphere (v1.0)
 
-----------------------------------------------------
+###Matt Horton
+###http://ccrma.stanford.edu/~mattah/256a/sound-sphere/
 
  All modifier keys can be used in their capital form.
 
@@ -24,5 +23,3 @@ decrease (respectively) the radius of the sphere or circle.
 
 rotation controls:
 Press or hold the left and right keys to rotate about the y axis.
-
-----------------------------------------------------
