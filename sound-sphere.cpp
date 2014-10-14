@@ -78,6 +78,7 @@ bool g_sphere = false;
 bool g_window_on = false;
 bool g_waterfall = false;
 bool g_party = false;
+bool g_noBug = true;
 GLboolean g_fullscreen = FALSE;
 // radius for circle
 float g_radius_factor = 1.0f;
@@ -233,6 +234,7 @@ void help()
     cerr << "'f' - toggle drawing of historical spectra" << endl;
     cerr << "'w' - show/hide time-domain window visualization" << endl;
     cerr << "'p' - toggle party mode" << endl;
+    cerr << "'b' - toggle buggy...er...awesome mode" << endl;
     cerr << "'r' - toggle rotation" << endl;
     cerr << endl;
     cerr << "radius controls:" << endl;
@@ -472,6 +474,10 @@ void keyboardFunc( unsigned char key, int x, int y )
         case 'h':
             help();
             break;
+        case 'B':
+        case 'b':
+            g_noBug = !g_noBug;
+            break;
         case 'M':
         case 'm': // toggle fullscreen
         {
@@ -669,7 +675,11 @@ void displayFunc( )
             for (int i = 0; i < 128; i++) {
                 glRotatef( circ_rot, 1, 0, 0 );
                 circ_rot += 0.049; // 2*pi/128
-                drawCircle(cbuff);
+                if(g_noBug) {
+                    drawCircle(cbuff);
+                } else {
+                    drawCircle(g_cbuff);
+                }
             }
             for (int i = 0; i < (g_bufferSize/2); i++) {
                 g_cbuff[i].re = 0.0f;
