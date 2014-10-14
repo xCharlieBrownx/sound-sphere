@@ -70,6 +70,7 @@ SAMPLE * g_buffer = NULL;
 SAMPLE * g_freq_buffer = NULL;
 complex * g_cbuff = NULL;
 complex ** g_cbuff_buff = NULL;
+SAMPLE * g_avg_buff = NULL;
 long g_bufferSize;
 // flags
 bool g_rotate = false;
@@ -79,6 +80,7 @@ bool g_window_on = false;
 bool g_waterfall = false;
 bool g_party = false;
 bool g_noBug = true;
+bool g_avMax = false;
 GLboolean g_fullscreen = FALSE;
 // radius for circle
 float g_radius_factor = 1.0f;
@@ -107,6 +109,7 @@ int callme( void * outputBuffer, void * inputBuffer, unsigned int numFrames,
     // cast!
     SAMPLE * input = (SAMPLE *)inputBuffer;
     SAMPLE * output = (SAMPLE *)outputBuffer;
+    SAMPLE avg = 0.0f, sum = 0.0f;
     
     // fill
     for( int i = 0; i < numFrames; i++ )
@@ -140,7 +143,10 @@ int callme( void * outputBuffer, void * inputBuffer, unsigned int numFrames,
         g_cbuff_buff[g_histCount][j] = g_cbuff[j];
         
         // get new maxVal
-        if (cmp_abs(g_cbuff[j]) > g_maxVal) g_maxVal = cmp_abs(g_cbuff[j]);
+        if (cmp_abs(g_cbuff[j]) > g_maxVal) {
+            g_maxVal = cmp_abs(g_cbuff[j]);
+            g_avg_buff[g_histCount] = g_maxVal;
+        }
     }
     
     g_histCount = (g_histCount + 1) % g_histSize;
@@ -161,20 +167,15 @@ void drawCircle(complex * cbuff) {
     for(int i =0; i < (g_bufferSize/2); i++){
         angle = 2 * M_PI * i / (g_bufferSize/2);
         radius = g_radius_factor * g_radius + g_radius_base;
-        //cerr << (10*pow(cmp_abs(cbuff[i]), .5)) << endl;
-        //cerr << i << endl;
+        
         if (cmp_abs(cbuff[i]) <= 1) {
             x = (10*pow(cmp_abs(cbuff[i]), .5)+radius)*cos(angle);
             y = (10*pow(cmp_abs(cbuff[i]), .5)+radius)*sin(angle);
         } else {
-            //cerr << "bad data" << endl;
             x = radius*cos(angle);
             y = radius*sin(angle);
         }
         
-        if (cmp_abs(cbuff[i]) > 1) {
-            //cerr << "worse data" << endl;
-        }
         glVertex2f(x,y);
     }
 
@@ -201,6 +202,7 @@ void drawSquare() {
 void drawWindow() {
     // step through and plot the waveform
     GLfloat x = -5;
+    
     // increment
     GLfloat xinc = ::fabs(2*x / (g_bufferSize));
 
@@ -234,6 +236,7 @@ void help()
     cerr << "'f' - toggle drawing of historical spectra" << endl;
     cerr << "'w' - show/hide time-domain window visualization" << endl;
     cerr << "'p' - toggle party mode" << endl;
+    cerr << "'a' - toggle max averaging in party mode. Makes color change more smoothly." << endl;
     cerr << "'b' - toggle buggy...er...awesome mode" << endl;
     cerr << "'r' - toggle rotation" << endl;
     cerr << endl;
@@ -310,6 +313,7 @@ int main( int argc, char ** argv )
     memset( g_buffer, 0, sizeof(SAMPLE)*g_bufferSize );
     memset(g_freq_buffer, 0, sizeof(SAMPLE)*g_bufferSize);
     g_window = new SAMPLE[g_bufferSize];
+    g_avg_buff = new SAMPLE[g_histSize];
     
     g_cbuff = new complex [g_bufferSize/2];
     for (int i = 0; i < (g_bufferSize/2); i++) {
@@ -439,6 +443,10 @@ void keyboardFunc( unsigned char key, int x, int y )
 {
     switch( key )
     {
+        case 'A':
+        case 'a':
+            g_avMax = !g_avMax;
+            break;
         case 'Q':
         case 'q':
             exit(1);
@@ -578,8 +586,9 @@ void idleFunc( )
 void displayFunc( )
 {
     // local state
-    static GLfloat zrot = 0.0f, c = 0.0f, xrot = 0.0f, breathe = 0.0f, breathe_angle = 0.0f, circ_rot = 0.0f;
+    static GLfloat zrot = 0.0f, c = 0.0f, xrot = 0.0f, breathe = 0.0f, breathe_angle = 0.0f, circ_rot = 0.0f, avg_max = 0.0f;
     complex * cbuff = new complex[g_bufferSize/2];
+    SAMPLE * avg_buff;
     
     
     // enforce refresh rate
@@ -640,7 +649,18 @@ void displayFunc( )
     
     
     if (g_party) {
-        Color color = colorSpectrum((double)(g_maxVal*100.0));
+        Color color = {};
+        // Average the max values over the history of max values
+        if (g_avMax) {
+            for (int i = 0; i < g_histSize; i++) {
+                avg_max += g_avg_buff[i];
+            }
+            avg_max = avg_max / g_histSize;
+            color = colorSpectrum((double)(avg_max*100.0));
+        } else { // Use only the current max value
+            color = colorSpectrum((double)(g_maxVal*100.0));
+        }
+    
         glColor3f(color.R, color.G, color.B);
     } else {
         glColor3f( (sin(c)+1)/2, (sin(c*2)+1)/2, (sin(c+.5)+1)/2 );
