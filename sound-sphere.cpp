@@ -573,6 +573,8 @@ void displayFunc( )
 {
     // local state
     static GLfloat zrot = 0.0f, c = 0.0f, xrot = 0.0f, breathe = 0.0f, breathe_angle = 0.0f, circ_rot = 0.0f;
+    complex * cbuff = new complex[g_bufferSize/2];
+    
     
     // enforce refresh rate
     long time_diff = 0;
@@ -653,6 +655,8 @@ void displayFunc( )
         circ_rot = 0.0f;
     }
     
+    memcpy( cbuff, g_cbuff, sizeof(complex)*(g_bufferSize/2));
+    
     if (g_sphere && g_circle) {
         if (g_waterfall) {
             for (int spectrum = 0; spectrum < g_maxCount; spectrum++){
@@ -665,7 +669,7 @@ void displayFunc( )
             for (int i = 0; i < 128; i++) {
                 glRotatef( circ_rot, 1, 0, 0 );
                 circ_rot += 0.049; // 2*pi/128
-                drawCircle(g_cbuff);
+                drawCircle(cbuff);
             }
             for (int i = 0; i < (g_bufferSize/2); i++) {
                 g_cbuff[i].re = 0.0f;
@@ -674,7 +678,7 @@ void displayFunc( )
         }
     } else if (g_circle) {
         glRotatef( circ_rot, 1, 0, 0 );
-        drawCircle(g_cbuff);
+        drawCircle(cbuff);
     }
     
     // pop
