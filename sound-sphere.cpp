@@ -1,9 +1,9 @@
 //-----------------------------------------------------------------------------
-// name: HelloSine.cpp
-// desc: hello sine wave, real-time
+// name: sound-sphere.cpp
+// desc: a spherical audio visualizer
 //
-// author: Ge Wang (ge@ccrma.stanford.edu)
-//   date: fall 2011
+// author: Matt Horton (mattah@ccrma.stanford.edu)
+//   date: fall 2014
 //   uses: RtAudio by Gary Scavone
 //-----------------------------------------------------------------------------
 #include "RtAudio.h"
@@ -24,6 +24,10 @@ using namespace std;
 #else
 #include <GL/gl.h>
 #include <GL/glu.h>
+#include <GL/glut.h>
+#endif
+
+#ifdef __UNIX_JACK__
 #include <GL/glut.h>
 #endif
 
