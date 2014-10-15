@@ -85,7 +85,11 @@ bool g_waterfall = false;
 bool g_party = false;
 bool g_noBug = true;
 bool g_avMax = false;
+#ifdef __UNIX_JACK__
+GLboolean g_fullscreen = gl_FALSE;
+#else
 GLboolean g_fullscreen = FALSE;
+#endif
 // radius for circle
 float g_radius_factor = 1.0f;
 float g_radius = 1.0f;
